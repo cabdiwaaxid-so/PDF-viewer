@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#022c22">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>PDF Viewer</title>
+  <!-- Tailwindcss -->
+  <script src="./js/3.4.17.es"></script>
+  <!-- PDF.js -->
+  <script src="./js/pdf.min.js"></script>
+  <link rel="manifest" href="./manifest.json">
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    
+    body {
+      overscroll-behavior: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      user-select: none;
+    }
+    
+    canvas {
+      display: none;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
+      touch-action: pan-x pan-y;
+    }
+    
+    /* Custom scrollbar for mobile */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #022c22;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #059669;
+      border-radius: 4px;
+    }
+    
+    /* Mobile optimizations */
+    button {
+      min-height: 44px;
+      min-width: 44px;
+    }
+    
+    /* Swipe hint */
+    .swipe-hint {
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+    
+    /* Loading spinner */
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(5, 150, 105, 0.3);
+      border-top-color: #059669;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body class="bg-green-950 text-green-100">
+  <!-- Header -->
+  <header class="sticky top-0 left-0 right-0 z-50 bg-green-900/95 backdrop-blur-sm border-b border-green-800">
+    <div class="container mx-auto px-2 py-1">
+      <div class="flex items-center justify-between">
+        <!-- Mobile menu button -->
+        <button id="mobileMenu" class="md:hidden p-2 text-green-300 hover:bg-green-800 rounded-lg">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </button>
+        
+        <!-- Logo/Title -->
+        <div class="flex items-center space-x-2">
+          <svg class="w-8 h-8 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+          </svg>
+          <h1 class="text-lg font-semibold text-green-300 hidden sm:block">PDF Viewer</h1>
+        </div>
+        
+        <!-- Desktop Controls -->
+        <div class="hidden md:flex items-center space-x-2">
+          <button id="history" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+            History
+          </button>
+          <button onclick="document.getElementById('file').click()" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors">
+            Open PDF
+          </button>
+        </div>
+      </div>
+      
+      <!-- Mobile Controls (hidden by default) -->
+      <div id="mobileControls" class="hidden md:hidden mt-2 space-y-2">
+        <div class="flex space-x-2">
+          <button id="mobileHistory" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg">
+            History
+          </button>
+          <button onclick="document.getElementById('file').click()" class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 rounded-lg">
+            Open PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="container mx-auto px-2 py-4 min-h-[calc(100vh-120px)]">
+    <!-- PDF Render Area -->
+    <div class="relative">
+      <canvas id="renderer"></canvas>
+      
+      <!-- Loading Indicator -->
+      <div id="loading" class="hidden absolute inset-0 flex items-center justify-center bg-green-950/80">
+        <div class="spinner"></div>
+      </div>
+    </div>
+    
+    <!-- Empty State -->
+    <div id="empty" class="text-center py-12 px-4">
+      <div class="w-24 h-24 mx-auto mb-6 text-green-400">
+        <svg fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+        </svg>
+      </div>
+      <h2 class="text-2xl font-bold text-green-300 mb-4">No PDF Loaded</h2>
+      <p class="text-green-400 mb-8 max-w-md mx-auto">
+        Open a PDF file to start reading. Your documents are stored locally and available offline.
+      </p>
+      <button onclick="document.getElementById('file').click()" class="px-8 py-4 bg-green-600 hover:bg-green-700 rounded-lg text-lg font-medium transition-colors">
+        Open PDF File
+      </button>
+      <div class="mt-8 text-green-500 text-sm">
+        <p class="flex items-center justify-center space-x-2">
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"></path>
+          </svg>
+          <span>Files are stored locally for offline access</span>
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- File Input -->
+  <input type="file" accept=".pdf" hidden id="file">
+
+  <!-- Bottom Navigation Bar (Mobile) -->
+  <div id="pdfControls" class="hidden fixed bottom-0 left-0 right-0 bg-green-900/95 backdrop-blur-sm border-t border-green-800 z-40 p-2 safe-area-bottom">
+    <div class="flex items-center justify-between">
+      <!-- Page Info -->
+      <div id="pageInfo" class="text-sm text-green-300 px-3 py-2 bg-green-800/50 rounded-lg min-w-[120px] text-center">
+        Page: --/--
+      </div>
+      
+      <!-- Navigation Controls -->
+      <div class="flex items-center space-x-3">
+        <button id="zoomOut" class="p-3 bg-green-700 hover:bg-green-800 rounded-full">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+          </svg>
+        </button>
+        
+        <div class="flex items-center space-x-1">
+          <button id="prev" class="p-3 bg-green-700 hover:bg-green-800 rounded-full">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+          </button>
+          
+          <button id="next" class="p-3 bg-green-700 hover:bg-green-800 rounded-full">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </button>
+        </div>
+        
+        <button id="zoomIn" class="p-3 bg-green-700 hover:bg-green-800 rounded-full">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+          </svg>
+        </button>
+      </div>
+      
+      <!-- Quick Actions -->
+      <div class="flex items-center">
+        <button id="quickMenu" class="p-3 bg-green-700 hover:bg-green-800 rounded-full">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Swipe Hint -->
+    <div class="mt-2 text-center">
+      <p class="text-xs text-green-400 swipe-hint flex items-center justify-center space-x-1">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+        </svg>
+        <span>Swipe or use buttons to navigate</span>
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
+        </svg>
+      </p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="./js/main.js"></script>
+  
+  <!-- Safe area for modern mobile devices -->
+  <style>
+    .safe-area-bottom {
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+    
+    @media (max-width: 768px) {
+      body {
+        padding-bottom: 80px;
+      }
+    }
+  </style>
+</body>
+</html>
