@@ -1,1 +1,8 @@
-
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.pdf_viewer_one_chi.twa",
+        "sha256_cert_fingerprints": ["4A:10:A8:76:7C:C9:1F:12:D7:45:33:D6:07:EC:BD:B2:EF:C1:50:86:F7:8E:8C:23:0E:B7:7E:19:63:A1:E8:4F"]
+      }
+    }]
